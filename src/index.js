@@ -7,17 +7,14 @@ import { Notify } from 'notiflix/build/notiflix-notify-aio';
 const refs = {
   searchForm: document.querySelector('.search-form'),
   galleryContainer: document.querySelector('.gallery'),
-  loadMoreBtn: document.querySelector('.load-more'),
 };
 
 let isShown = 0;
+let isLoading = false;
 
 const newsApiService = new NewsApiService();
 
 refs.searchForm.addEventListener('submit', onSearch);
-refs.loadMoreBtn.addEventListener('click', onLoadMore);
-
-// scrolPlay();
 
 const options = {
   rootMargin: '50px',
@@ -40,29 +37,19 @@ function onSearch(e) {
 
   isShown = 0;
   fetchGallery();
-  
-}
-
-function onLoadMore() {
-  // newsApiService.incrementPage();
-  fetchGallery();
-  
+  observer.observe(refs.galleryContainer.lastElementChild);
 }
 
 async function fetchGallery() {
-  refs.loadMoreBtn.classList.add('is-hidden');
+  isLoading = true;
 
   const r = await newsApiService.fetchGallery();
-  
   const { hits, total } = r;
-  // isShown += hits.length;
 
   if (!hits.length) {
     Notify.failure(
       `Sorry, there are no images matching your search query. Please try again.`
     );
-    refs.loadMoreBtn.classList.add('is-hidden');
-
     return;
   }
 
@@ -71,12 +58,9 @@ async function fetchGallery() {
 
   if (isShown < total) {
     Notify.success(`Hooray! We found ${total} images.`);
-    refs.loadMoreBtn.classList.remove('is-hidden');
-
-  }
-
-
-  if (isShown >= total) {
+    isLoading = false;
+    observer.observe(refs.galleryContainer.lastElementChild);
+  } else {
     Notify.info("We're sorry, but you've reached the end of search results.");
   }
 }
@@ -122,6 +106,15 @@ function onRenderGallery(elements) {
   refs.galleryContainer.insertAdjacentHTML('beforeend', markup);
   lightbox.refresh();
 }
+
+function onLoadMore(entries) {
+entries.forEach((entry) => {
+if (entry.isIntersecting && !isLoading) {
+fetchGallery();
+}
+});
+}
+
 
 // Нескінченний скрол
 
